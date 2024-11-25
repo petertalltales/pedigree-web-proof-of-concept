@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext", // Target modern JavaScript (ESNext for latest features)
+    "module": "ESNext", // Use ES module syntax for compatibility with modern Node.js
+    "moduleResolution": "Node", // Resolve modules using Node.js resolution
+    "rootDir": "src", // Define the source directory
+    "outDir": "dist", // Output compiled files to "dist" directory
+    "strict": true, // Enable strict type-checking options
+    "esModuleInterop": true, // Allow interoperability with CommonJS modules
+    "allowSyntheticDefaultImports": true, // Allow default imports from CommonJS modules
+    "resolveJsonModule": true, // Allow importing JSON files
+    "skipLibCheck": true, // Skip checking declaration files for faster compilation
+    "isolatedModules": true, // Ensure each file is treated as a module
+    "noEmit": true // Avoid emitting JavaScript files during compilation
+  },
+  "ts-node": {
+    // Tell ts-node CLI to install the --loader automatically
+    "esm": true
+  },
+  "include": ["src/**/*.ts"], // Include all TypeScript files in the "src" folder
+  "exclude": ["node_modules", "dist"] // Exclude "node_modules" and "dist" folders
+}

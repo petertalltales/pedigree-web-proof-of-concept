@@ -1,0 +1,146 @@
+// Manually calculated the results and verified with Wolfram Alpha, had to have
+//some known truths to work from
+
+import { findAllPaths } from '../services/paths/findAllPaths';
+import { Individual } from '../types/Individual';
+
+// Define complexPathData first
+const complexPathData: Record<string, Individual> = {
+  X: {
+    id: 'X',
+    father_id: 'A',
+    mother_id: 'B',
+    birth_date: null,
+    inbreeding: null,
+    founder: null,
+  },
+  A: {
+    id: 'A',
+    father_id: 'C',
+    mother_id: 'D',
+    birth_date: null,
+    inbreeding: null,
+    founder: null,
+  },
+  B: {
+    id: 'B',
+    father_id: 'A',
+    mother_id: 'H',
+    birth_date: null,
+    inbreeding: null,
+    founder: null,
+  },
+  C: {
+    id: 'C',
+    father_id: 'F',
+    mother_id: 'E',
+    birth_date: null,
+    inbreeding: null,
+    founder: null,
+  },
+  D: {
+    id: 'D',
+    father_id: 'E',
+    mother_id: 'G',
+    birth_date: null,
+    inbreeding: null,
+    founder: null,
+  },
+  E: {
+    id: 'E',
+    father_id: null,
+    mother_id: null,
+    birth_date: null,
+    inbreeding: 0,
+    founder: 'Yes',
+  },
+  F: {
+    id: 'F',
+    father_id: null,
+    mother_id: null,
+    birth_date: null,
+    inbreeding: 0,
+    founder: 'Yes',
+  },
+  G: {
+    id: 'G',
+    father_id: null,
+    mother_id: null,
+    birth_date: null,
+    inbreeding: 0,
+    founder: 'Yes',
+  },
+  H: {
+    id: 'H',
+    father_id: 'G',
+    mother_id: 'M',
+    birth_date: null,
+    inbreeding: null,
+    founder: null,
+  },
+  M: {
+    id: 'M',
+    father_id: null,
+    mother_id: null,
+    birth_date: null,
+    inbreeding: 0,
+    founder: 'Yes',
+  },
+};
+
+// Mock `getIndividual` after defining `complexPathData`
+jest.mock('../services/data/dataService', () => ({
+  getIndividual: jest.fn((id: string) =>
+    Promise.resolve(complexPathData[id] || null)
+  ),
+}));
+
+describe('findAllPaths', () => {
+  test('Should handle normal circumstances - Paths for X', async () => {
+    const individual = complexPathData['X'];
+    const familyTree = await findAllPaths(individual);
+
+    const expectedPaternalPaths = [
+      ['A', 'C'],
+      ['A', 'C', 'F'],
+      ['A', 'C', 'E'],
+      ['A', 'D'],
+      ['A', 'D', 'E'],
+      ['A', 'D', 'G'],
+    ];
+
+    const expectedMaternalPaths = [
+      ['B', 'A'],
+      ['B', 'A', 'C'],
+      ['B', 'A', 'C', 'F'],
+      ['B', 'A', 'C', 'E'],
+      ['B', 'A', 'D'],
+      ['B', 'A', 'D', 'E'],
+      ['B', 'A', 'D', 'G'],
+      ['B', 'H'],
+      ['B', 'H', 'G'],
+      ['B', 'H', 'M'],
+    ];
+
+    const actualPaternalPaths = [
+      ...familyTree.paternal_paths.map((path) => path.path),
+    ];
+
+    const actualMaternalPaths = [
+      ...familyTree.maternal_paths.map((path) => path.path),
+    ];
+
+    // Sort both for easier comparison
+    const sortedExpectedPaternal = expectedPaternalPaths.sort();
+    const sortedActualPaternal = actualPaternalPaths.sort();
+
+    const sortedExpectedMaternal = expectedMaternalPaths.sort();
+    const sortedActualMaternal = actualMaternalPaths.sort();
+
+    // Check equality for paternal paths
+    expect(sortedActualPaternal).toEqual(sortedExpectedPaternal);
+
+    // Check equality for maternal paths
+    expect(sortedActualMaternal).toEqual(sortedExpectedMaternal);
+  });
+});

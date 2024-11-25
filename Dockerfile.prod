@@ -1,0 +1,21 @@
+# Stage 2: Production image
+FROM node:20-alpine AS production
+
+WORKDIR ./
+
+COPY . .
+
+RUN npm install --omit=dev
+
+# Set environment variables - they should be in AWS Secret later, this is a test-database
+ENV NODE_ENV=production
+ENV POSTGRES_USER=pedigre_admin
+ENV POSTGRES_PASSWORD=kindra666
+ENV POSTGRES_DB=pedigree-db
+ENV POSTGRES_HOST=pedigree-db.c7c0qaoqws40.eu-central-1.rds.amazonaws.com
+ENV POSTGRES_PORT=5432
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Start the backend server, which also serves the frontend
+CMD ["npx", "tsx", "./dist/apps/api/src/main.ts"]

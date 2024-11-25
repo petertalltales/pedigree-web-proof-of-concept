@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      target: production
+    image: pedigree-app-live
+    command: npx tsx ./dist/apps/api/src/main.ts
+    ports:
+      - '8080:8080'
+    environment:
+      VITE_API_URL: https://qq2y9r4xmv.eu-central-1.awsapprunner.com:5000
+      VITE_HOST: 0.0.0.0
+      NODE_ENV: production

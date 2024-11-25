@@ -1,0 +1,27 @@
+# Docker build process for dev, both are run by the composer down below and puts a
+# hotloading dev server up in notime, great to have.
+FROM node:20-alpine AS base
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install all dependencies (including devDependencies)
+RUN npm install
+
+# Copy the rest of the application code
+COPY . .
+
+# Stage 2: Development
+FROM base AS development
+
+# Set environment variables for development
+ENV NODE_ENV=development
+
+# Expose the necessary port
+EXPOSE 5173
+
+# Define the command to run the application in development mode
+CMD ["npm", "run", "docker:web:serve"]

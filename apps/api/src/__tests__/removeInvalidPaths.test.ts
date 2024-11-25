@@ -1,0 +1,71 @@
+// Same here, calculated by hand to get verified truths, really fun.
+
+import { removeInvalidPaths } from '../services/paths/removeInvalidPaths';
+import {
+  Individual,
+  FamilyTree,
+  PathPair,
+  ValidPaths,
+} from '../types/Individual';
+
+describe('removeInvalidPaths', () => {
+  test('Should generate correct valid PathPairs for individual X', () => {
+    // Define individual 'X'
+    const individualX: Individual = {
+      id: 'X',
+      father_id: 'A',
+      mother_id: 'B',
+      birth_date: null,
+      inbreeding: null,
+      founder: null,
+    };
+
+    // Define Paternal Paths for 'X'
+    const paternalPaths: string[][] = [
+      ['A', 'C'],
+      ['A', 'C', 'F'],
+      ['A', 'C', 'E'],
+      ['A', 'D'],
+      ['A', 'D', 'E'],
+      ['A', 'D', 'G'],
+    ];
+
+    // Define Maternal Paths for 'X'
+    const maternalPaths: string[][] = [
+      ['B', 'A'],
+      ['B', 'A', 'C'],
+      ['B', 'A', 'C', 'F'],
+      ['B', 'A', 'C', 'E'],
+      ['B', 'A', 'D'],
+      ['B', 'A', 'D', 'E'],
+      ['B', 'A', 'D', 'G'],
+      ['B', 'H'],
+      ['B', 'H', 'G'],
+      ['B', 'H', 'M'],
+    ];
+
+    // Construct the FamilyTree object
+    const familyTree: FamilyTree = {
+      individual: individualX,
+      paternal_paths: paternalPaths.map((path) => ({ path })),
+      maternal_paths: maternalPaths.map((path) => ({ path })),
+    };
+
+    // Call the removeInvalidPaths function
+    const validPathsResult: ValidPaths = removeInvalidPaths(familyTree);
+
+    // Define the expected valid PathPairs
+    const expectedValidPaths: PathPair[] = [
+      {
+        paternal_path: { path: ['A', 'D', 'G'] },
+        maternal_path: { path: ['B', 'H', 'G'] },
+      },
+    ];
+
+    // Extract the actual valid paths from the result
+    const actualValidPaths = validPathsResult.valid_paths;
+
+    // Assertion to check if the actual valid paths match the expected valid paths
+    expect(actualValidPaths).toEqual(expectedValidPaths);
+  });
+});

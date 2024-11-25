@@ -1,0 +1,72 @@
+// Where the magic happens, Dock
+services:
+  api:
+    build:
+      context: .
+      target: development
+      dockerfile: /apps/api/Dockerfile.dev
+    depends_on:
+      - postgres
+    command: npm run docker:api:serve
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api
+          target: app/apps/api
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: package.json
+    ports:
+      - '5000:5000'
+    environment:
+      POSTGRES_USER: pedigree-admin
+      POSTGRES_PASSWORD: kindra666
+      POSTGRES_DB: pedigree-db
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      SERVER_PORT: 5000
+      NODE_ENV: development
+    networks:
+      - app-network
+
+  web:
+    build:
+      context: .
+      target: development
+      dockerfile: /apps/web/Dockerfile.dev
+    volumes:
+      - .:/app
+      - mono-node-modules:/app/node_modules
+    command: npm run docker:web:serve
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://localhost:5000/
+      VITE_HOST: 0.0.0.0
+      NODE_ENV: development
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:14-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: pedigree-admin
+      POSTGRES_PASSWORD: kindra666
+      POSTGRES_DB: pedigree-db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker-init:/docker-entrypoint-initdb.d
+    ports:
+      - '5433:5432'
+    networks:
+      - app-network
+
+volumes:
+  mono-node-modules:
+  postgres-data:
+
+networks:
+  app-network:
+    driver: bridge

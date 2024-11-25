@@ -1,0 +1,110 @@
+// Not really many ways this can go wrong but I test everything, takes so little time to write and ends up
+// saving a ton of time
+
+import {
+  calculateBirthDates,
+  calculateDeathDates,
+} from '../services/calculations/calculateDateService';
+import pool from '../config/db';
+import logger from '../utils/logger';
+
+jest.mock('../config/db');
+jest.mock('../utils/logger');
+
+const mockClient = {
+  query: jest.fn(),
+  release: jest.fn(),
+};
+
+(pool.connect as jest.Mock).mockResolvedValue(mockClient);
+
+describe('calculateDateService', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('calculateBirthDates', () => {
+    it('should execute the correct SQL queries and commit the transaction', async () => {
+      await calculateBirthDates();
+
+      // Log the queries for debugging
+      console.log('Executed queries:', mockClient.query.mock.calls);
+
+      // Verify the BEGIN transaction
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      // Verify the update query with regex matching
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringMatching(/UPDATE individuals\s+SET birth_date/i)
+      );
+      // Verify the COMMIT
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      // Verify logger is called
+      expect(logger.info).toHaveBeenCalledWith(
+        'Birth dates estimated successfully.'
+      );
+    });
+
+    it('should rollback the transaction and log an error on failure', async () => {
+      mockClient.query.mockRejectedValueOnce(new Error('Test error'));
+
+      await expect(calculateBirthDates()).rejects.toThrow('Test error');
+
+      // Verify the BEGIN transaction
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      // Verify the ROLLBACK
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      // Verify logger.error is called
+      expect(logger.error).toHaveBeenCalledWith(
+        'Error estimating birth dates:',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('calculateDeathDates', () => {
+    it('should execute all death date update cases and commit the transaction', async () => {
+      await calculateDeathDates();
+
+      // Log the queries for debugging
+      console.log('Executed queries:', mockClient.query.mock.calls);
+
+      // Verify the BEGIN transaction
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      // Verify the death date queries using regex matching
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringMatching(/UPDATE individuals\s+SET death_date = LEAST/i)
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringMatching(/UPDATE individuals\s+SET death_date = GREATEST/i)
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringMatching(/SET death_date = birth_date \+/i)
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringMatching(/SET death_date = GREATEST/i)
+      );
+      // Verify the COMMIT
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      // Verify logger is called
+      expect(logger.info).toHaveBeenCalledWith(
+        'Death dates and deceased statuses estimated successfully.'
+      );
+    });
+
+    it('should rollback the transaction and log an error on failure', async () => {
+      mockClient.query.mockRejectedValueOnce(new Error('Test error'));
+
+      await expect(calculateDeathDates()).rejects.toThrow('Test error');
+
+      // Verify the BEGIN transaction
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      // Verify the ROLLBACK
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      // Verify logger.error is called
+      expect(logger.error).toHaveBeenCalledWith(
+        'Error estimating death dates:',
+        expect.any(Error)
+      );
+    });
+  });
+});
