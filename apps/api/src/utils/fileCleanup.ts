@@ -1,4 +1,4 @@
-// Unlinks files.
+// src/utils/fileCleanup.ts
 import fs from 'fs';
 import logger from './logger';
 
@@ -10,8 +10,6 @@ export const deleteFile = (filePath: string): void => {
   fs.unlink(filePath, (err) => {
     if (err) {
       logger.error(`Error deleting file at ${filePath}:`, err);
-    } else {
-      logger.info(`File deleted: ${filePath}`);
     }
   });
 };

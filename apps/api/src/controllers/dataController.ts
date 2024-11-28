@@ -1,5 +1,4 @@
-// Barrel files for prettier imports.
-// Continue with more specific functions that handle modular input/output.
+// src/controllers/dataController.ts
 
 import { RequestHandler } from 'express';
 import asyncHandler from 'express-async-handler';
@@ -17,10 +16,7 @@ import {
 } from '../services/calculations/calculateDateService';
 import { calculateFounders } from '../services/calculations/calculateFounderService';
 import { calculateUnknownFathers } from '../services/calculations/calculateUnknownFathersService';
-import {
-  calculateInbreeding,
-  calculateInbreedingForAll,
-} from '../services/calculations/calculateInbreedingService';
+import { calculateInbreedingForAll } from '../services/calculations/calculateInbreedingService';
 
 /**
  * Fetch all temporary data.
@@ -133,20 +129,3 @@ export const setInbreedingForAll: RequestHandler = asyncHandler(
     res.send('Inbreeding coefficients calculated for all individuals.');
   }
 );
-
-/**
- * Calculate and update inbreeding coefficient for a specific individual.
- */
-export const setInbreeding: RequestHandler = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  if (!id) {
-    throw new AppError('ID is required.', 400);
-  }
-
-  await calculateInbreeding(id);
-
-  res.status(200).json({
-    message: `Inbreeding analysis completed and updated for ID: ${id}`,
-  });
-});

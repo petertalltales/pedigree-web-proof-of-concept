@@ -32,7 +32,7 @@
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["apps/test-server/**/*.ts"]
+        "lintFilePatterns": ["apps/api/**/*.ts"]
       }
     }
   },

@@ -1,5 +1,4 @@
-// Obviously remove hardcoded values before launch and use .env
-// Implement more logging and error tracking
+// apps/api/src/config/db.ts
 
 import pg from 'pg';
 import logger from '../utils/logger';

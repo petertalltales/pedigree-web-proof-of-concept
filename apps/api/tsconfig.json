@@ -1,6 +1,6 @@
 /*eslint no-use-before-define: 2*/
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../../tsconfig.base.json",
   "files": [],
   "include": [],
   "references": [

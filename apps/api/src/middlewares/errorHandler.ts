@@ -1,6 +1,3 @@
-// Logging and error handling middleware for the application.
-// Several ways it can be made more robust
-
 import { Request, Response } from 'express';
 import logger from '../utils/logger';
 import AppError from '../utils/AppError';

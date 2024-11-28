@@ -1,12 +1,10 @@
-// Cors configuration letting only know entities interact with the API
-// Auth for the API can be implemented in several ways
-
 import cors from 'cors';
 
 // Allowed origins
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://pedigree-web-339027673926.europe-north1.run.app',
+  'http://localhost:8080',
+  'https://pedigree-web-339027673926.europe-north1.run.app'
 ];
 
 // CORS configuration options

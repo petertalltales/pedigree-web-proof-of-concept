@@ -1,5 +1,3 @@
-// Quick and dirty validator, can be improved upon greatly
-
 import { Individual } from '../types/Individual';
 
 /**

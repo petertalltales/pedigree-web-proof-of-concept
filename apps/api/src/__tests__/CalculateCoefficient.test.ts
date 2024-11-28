@@ -1,209 +1,202 @@
-// These tests were a lifesaver when building the functionality of the coefficient.
-// Who needs to run your code when you can just run tests when developing?
+// __tests__/calculateCoefficient.test.ts
 
-import { calculateCoefficient } from '../services/calculations/calculateCoefficient'; // Adjust the import path as necessary
-import { Individual, PathPair, ValidPaths } from '../types/Individual';
-import { getIndividual } from '../services/data/dataService';
-import { calculateInbreeding } from '../services/calculations/calculateInbreedingService';
+import {
+  calculateCoefficient,
+  calculatePairContribution,
+} from '../services/calculations/calculateCoefficient';
+import { ValidPaths, PathPair, Individual } from '../types/pedigreeTypes';
 
-// Mock the dataService and calculateInbreedingService modules
-jest.mock('../services/data/dataService', () => ({
-  getIndividual: jest.fn(),
-}));
+describe('calculatePairContribution', () => {
+  it('should correctly calculate contribution with valid generations and common_ancestor_inbreeding', () => {
+    const pair: PathPair = {
+      paternal_path: { path: ['P1', 'G1'] }, // Mocked paths with string arrays
+      maternal_path: { path: ['M1', 'G1'] },
+      generations: 3,
+      common_ancestor: 'A1',
+      common_ancestor_inbreeding: 0.5,
+    };
 
-jest.mock('../services/calculations/calculateInbreedingService', () => ({
-  calculateInbreeding: jest.fn(),
-}));
-
-const mockedGetIndividual = getIndividual as jest.MockedFunction<
-  typeof getIndividual
->;
-const mockedCalculateInbreeding = calculateInbreeding as jest.MockedFunction<
-  typeof calculateInbreeding
->;
-
-describe('calculateCoefficient - Single PathPair for Individual X', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+    const expectedContribution = Math.pow(0.5, 3) * (1 + 0.5); // 0.125 * 1.5 = 0.1875
+    expect(calculatePairContribution(pair)).toBeCloseTo(expectedContribution);
   });
 
-  test('Should calculate inbreeding coefficient correctly for individual X with paternal_path: [A, D, G] and maternal_path: [B, H, G]', async () => {
-    // Define the ValidPaths object
-    const validPaths: PathPair[] = [
-      {
-        paternal_path: { path: ['A', 'D', 'G'] },
-        maternal_path: { path: ['B', 'H', 'G'] },
-      },
-    ];
-
-    const validPathsObject: ValidPaths = {
-      individual: {
-        id: 'X',
-        father_id: 'A',
-        mother_id: 'B',
-        birth_date: null,
-        inbreeding: null,
-        founder: null,
-      },
-      valid_paths: validPaths,
+  it('should correctly calculate contribution when generations is 1', () => {
+    const pair: PathPair = {
+      paternal_path: { path: ['P2'] },
+      maternal_path: { path: ['M2'] },
+      generations: 1,
+      common_ancestor: 'A2',
+      common_ancestor_inbreeding: 0.2,
     };
 
-    // Mock getIndividual responses
-    const individualG: Individual = {
-      id: 'G',
-      father_id: null,
-      mother_id: null,
-      birth_date: null,
-      inbreeding: 0, // fA = 0
-      founder: 'Yes',
+    const expectedContribution = Math.pow(0.5, 1) * (1 + 0.2); // 0.5 * 1.2 = 0.6
+    expect(calculatePairContribution(pair)).toBeCloseTo(expectedContribution);
+  });
+
+  it('should throw an error when common_ancestor_inbreeding is null', () => {
+    const pair: PathPair = {
+      paternal_path: { path: ['P3', 'G2'] },
+      maternal_path: { path: ['M3', 'G2'] },
+      generations: 2,
+      common_ancestor: 'A3',
+      common_ancestor_inbreeding: null,
     };
 
-    mockedGetIndividual.mockImplementation(async (id: string) => {
-      if (id === 'G') return individualG;
-      return null;
-    });
+    expect(() => calculatePairContribution(pair)).toThrowError(
+      'Common ancestor inbreeding value is not set.'
+    );
+  });
 
-    // Calculate the expected contribution
-    // contribution = 0.5^(6 - 1) * (1 + 0.00) = 0.03125
-    const expectedInbreeding = 0.03125;
+  it('should throw an error when common_ancestor_inbreeding is undefined', () => {
+    const pair: PathPair = {
+      paternal_path: { path: ['P4', 'G3'] },
+      maternal_path: { path: ['M4', 'G3'] },
+      generations: 2,
+      common_ancestor: 'A4',
+      // common_ancestor_inbreeding is undefined
+    } as PathPair; // Type assertion to bypass TypeScript checks for testing
 
-    const result = await calculateCoefficient(validPathsObject);
-
-    expect(result).toBeCloseTo(expectedInbreeding);
-    expect(mockedGetIndividual).toHaveBeenCalledWith('G');
-    expect(mockedCalculateInbreeding).not.toHaveBeenCalled();
+    expect(() => calculatePairContribution(pair)).toThrowError(
+      'Common ancestor inbreeding value is not set.'
+    );
   });
 });
 
-describe('calculateCoefficient - PathPair with Ancestor fA > 0', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+describe('calculateCoefficient', () => {
+  it('should correctly calculate the inbreeding coefficient with multiple valid PathPairs', () => {
+    const individual: Individual = {
+      id: 'I1',
+      inbreeding: null,
+      // Other fields can be mocked as necessary
+    };
+
+    const validPaths: ValidPaths = {
+      individual,
+      valid_paths: [
+        {
+          paternal_path: { path: ['P1', 'G1'] },
+          maternal_path: { path: ['M1', 'G1'] },
+          generations: 2,
+          common_ancestor: 'A1',
+          common_ancestor_inbreeding: 0.5,
+        },
+        {
+          paternal_path: { path: ['P2', 'G2', 'G1'] },
+          maternal_path: { path: ['M2', 'G2', 'G1'] },
+          generations: 3,
+          common_ancestor: 'A2',
+          common_ancestor_inbreeding: 0.25,
+        },
+      ],
+    };
+
+    const expectedfX = parseFloat((0.375 + 0.15625).toFixed(10));
+    expect(calculateCoefficient(validPaths)).toBeCloseTo(expectedfX);
   });
 
-  test('Should calculate inbreeding coefficient correctly for individual X with fA = 0.05 from ancestor G', async () => {
-    // Define the ValidPaths object
-    const validPaths: PathPair[] = [
-      {
-        paternal_path: { path: ['A', 'D', 'G'] },
-        maternal_path: { path: ['B', 'H', 'G'] },
-      },
-    ];
-
-    const validPathsObject: ValidPaths = {
-      individual: {
-        id: 'X',
-        father_id: 'A',
-        mother_id: 'B',
-        birth_date: null,
-        inbreeding: null,
-        founder: null,
-      },
-      valid_paths: validPaths,
+  it('should return 0 when valid_paths is empty', () => {
+    const individual: Individual = {
+      id: 'I2',
+      inbreeding: null,
     };
 
-    // Mock getIndividual responses
-    const individualG: Individual = {
-      id: 'G',
-      father_id: null,
-      mother_id: null,
-      birth_date: null,
-      inbreeding: 0.05, // fA = 0.05
-      founder: 'Yes',
+    const validPaths: ValidPaths = {
+      individual,
+      valid_paths: [],
     };
 
-    mockedGetIndividual.mockImplementation(async (id: string) => {
-      if (id === 'G') return individualG;
-      return null;
-    });
-
-    // Calculate the expected contribution
-    // n_p = 3, n_m = 3, n = 6
-    // contribution = 0.5^(6 - 1) * (1 + 0.05) = 0.032812
-    const expectedInbreeding = 0.032812;
-
-    const result = await calculateCoefficient(validPathsObject);
-
-    expect(result).toBeCloseTo(expectedInbreeding);
-    expect(mockedGetIndividual).toHaveBeenCalledWith('G');
-    expect(mockedCalculateInbreeding).not.toHaveBeenCalled();
-  });
-});
-
-describe('calculateCoefficient - Multiple PathPairs for Individual X', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+    expect(calculateCoefficient(validPaths)).toBe(0);
   });
 
-  test('Should calculate inbreeding coefficient correctly when both PathPairs are provided, summing their contributions', async () => {
-    // Define the ValidPaths object with two PathPairs
-    const validPaths: PathPair[] = [
-      {
-        paternal_path: { path: ['A', 'D', 'G'] },
-        maternal_path: { path: ['B', 'H', 'G'] },
-      },
-      {
-        paternal_path: { path: ['A', 'D', 'F'] },
-        maternal_path: { path: ['B', 'H', 'F'] },
-      },
-    ];
-
-    const validPathsObject: ValidPaths = {
-      individual: {
-        id: 'X',
-        father_id: 'A',
-        mother_id: 'B',
-        birth_date: null,
-        inbreeding: null,
-        founder: null,
-      },
-      valid_paths: validPaths,
+  it('should throw an error if any PathPair has missing common_ancestor_inbreeding', () => {
+    const individual: Individual = {
+      id: 'I3',
+      inbreeding: null,
     };
 
-    // Mock getIndividual responses
-    const individualG: Individual = {
-      id: 'G',
-      father_id: null,
-      mother_id: null,
-      birth_date: null,
-      inbreeding: 0, // fA = 0 for G
-      founder: 'Yes',
+    const validPaths: ValidPaths = {
+      individual,
+      valid_paths: [
+        {
+          paternal_path: { path: ['P3', 'G3'] },
+          maternal_path: { path: ['M3', 'G3'] },
+          generations: 2,
+          common_ancestor: 'A3',
+          common_ancestor_inbreeding: 0.5,
+        },
+        {
+          paternal_path: { path: ['P4', 'G4', 'G2'] },
+          maternal_path: { path: ['M4', 'G4', 'G2'] },
+          generations: 3,
+          common_ancestor: 'A4',
+          common_ancestor_inbreeding: null,
+        },
+      ],
     };
 
-    const individualF: Individual = {
-      id: 'F',
-      father_id: null,
-      mother_id: null,
-      birth_date: null,
-      inbreeding: 0.05, // fA = 0.05 for F
-      founder: 'Yes',
+    expect(() => calculateCoefficient(validPaths)).toThrowError(
+      'Common ancestor inbreeding value is not set.'
+    );
+  });
+
+  it('should throw an error when PathPair has undefined common_ancestor_inbreeding', () => {
+    const individual: Individual = {
+      id: 'I4',
+      inbreeding: null,
     };
 
-    mockedGetIndividual.mockImplementation(async (id: string) => {
-      if (id === 'G') return individualG;
-      if (id === 'F') return individualF;
-      return null;
-    });
+    const validPaths: ValidPaths = {
+      individual,
+      valid_paths: [
+        {
+          paternal_path: { path: ['P5', 'G5'] },
+          maternal_path: { path: ['M5', 'G5'] },
+          generations: 2,
+          common_ancestor: 'A5',
+          common_ancestor_inbreeding: 0.5,
+        },
+        {
+          paternal_path: { path: ['P6', 'G6', 'G3'] },
+          maternal_path: { path: ['M6', 'G6', 'G3'] },
+          generations: 3,
+          common_ancestor: 'A6',
+          // common_ancestor_inbreeding is undefined
+        } as PathPair,
+      ],
+    };
 
-    // Calculate the expected contributions
-    // First PathPair:
-    // n_p = 3, n_m = 3, n = 6
-    // contribution1 = 0.5^(6 - 1) * (1 + 0) = 0.03125
+    expect(() => calculateCoefficient(validPaths)).toThrowError(
+      'Common ancestor inbreeding value is not set.'
+    );
+  });
 
-    // Second PathPair:
-    // n_p = 3, n_m = 3, n = 6
-    // contribution2 = 0.5^(6 - 1) * (1 + 0.05) = 0.03125 * 1.05 = 0.0328125
+  it('should correctly calculate fX when all PathPairs have valid common_ancestor_inbreeding', () => {
+    const individual: Individual = {
+      id: 'I5',
+      inbreeding: null,
+    };
 
-    // Total Inbreeding Coefficient:
-    // fX = 0.03125 + 0.0328125 = 0.0640625
+    const validPaths: ValidPaths = {
+      individual,
+      valid_paths: [
+        {
+          paternal_path: { path: ['P7', 'G7', 'G4'] },
+          maternal_path: { path: ['M7', 'G7', 'G4'] },
+          generations: 4,
+          common_ancestor: 'A7',
+          common_ancestor_inbreeding: 0.1,
+        },
+        {
+          paternal_path: { path: ['P8', 'G8', 'G5', 'G4'] },
+          maternal_path: { path: ['M8', 'G8', 'G5', 'G4'] },
+          generations: 5,
+          common_ancestor: 'A8',
+          common_ancestor_inbreeding: 0.2,
+        },
+      ],
+    };
 
-    const expectedInbreeding = 0.0640625;
-
-    const result = await calculateCoefficient(validPathsObject);
-
-    expect(result).toBeCloseTo(expectedInbreeding);
-    expect(mockedGetIndividual).toHaveBeenCalledWith('G');
-    expect(mockedGetIndividual).toHaveBeenCalledWith('F');
-    expect(mockedCalculateInbreeding).not.toHaveBeenCalled();
-    expect(mockedGetIndividual).toHaveBeenCalledTimes(2);
+    const expectedfX = parseFloat((0.06875 + 0.0375).toFixed(10)); // 0.10625
+    expect(calculateCoefficient(validPaths)).toBeCloseTo(expectedfX);
   });
 });

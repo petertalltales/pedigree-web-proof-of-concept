@@ -1,4 +1,4 @@
-// Nice and simple, nothing weird, abit verbose
+// src/services/calculations/setUnknownFathersService.ts
 import pool from '../../config/db';
 import logger from '../../utils/logger';
 
@@ -35,7 +35,6 @@ export const calculateUnknownFathers = async (): Promise<void> => {
     }
 
     await client.query('COMMIT');
-    logger.info(`Updated father_id for ${rows.length} individuals.`);
   } catch (error) {
     await client.query('ROLLBACK');
     logger.error('Error setting unknown fathers:', error);

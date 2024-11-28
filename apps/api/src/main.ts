@@ -1,7 +1,4 @@
-// Needs to more gracefully handle database connection errors, this is barebones
-
 import dotenv from 'dotenv';
-import path from 'path';
 import app from './router';
 import pool from './config/db';
 import logger from './utils/logger';

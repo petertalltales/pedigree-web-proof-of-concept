@@ -1,5 +1,3 @@
-// Quick logger to make sure I can figure out whats going right or wrong
-
 import { createLogger, transports, format } from 'winston';
 
 /**
@@ -11,27 +9,31 @@ import { createLogger, transports, format } from 'winston';
 const logFormat = format.combine(
   format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   format.errors({ stack: true }), // Include stack trace for errors
-  format.splat(),
-  format.json()
+  format.printf(
+    ({ timestamp, level, message, stack }) =>
+      `[${timestamp}] ${level}: ${stack || message}`
+  ) // Customize log format with stack trace
 );
 
 // Create the logger instance
 const logger = createLogger({
-  level: 'info',
+  level: process.env.LOG_LEVEL || 'info', // Use LOG_LEVEL env variable or default to 'info'
   format: logFormat,
   transports: [
-    new transports.File({ filename: 'logs/error.log', level: 'error' }), // Log errors to file
-    new transports.File({ filename: 'logs/combined.log' }), // Log all levels to file
+    // Log all levels to a combined file
+    new transports.File({ filename: 'logs/combined.log', level: 'info' }),
+
+    // Log errors to a separate file
+    new transports.File({ filename: 'logs/error.log', level: 'error' }),
+
+    // Always log to the console
+    new transports.Console({
+      format: format.combine(
+        format.colorize(), // Add colorized output for console
+        format.simple() // Simpler format for readability in console
+      ),
+    }),
   ],
 });
-
-// Log to console in non-production environments
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
-    new transports.Console({
-      format: format.combine(format.colorize(), format.simple()),
-    })
-  );
-}
 
 export default logger;

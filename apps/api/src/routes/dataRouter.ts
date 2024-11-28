@@ -1,4 +1,4 @@
-// Barrel files here aswell, aswell as combining several edgecase calls into one modular
+// src/routes/dataRouter.ts
 
 import { Router } from 'express';
 import {
@@ -10,7 +10,6 @@ import {
   setBirthdates,
   setUnknownFathers,
   setFounders,
-  setInbreeding,
   setInbreedingForAll,
   setInbreedingCoefficient,
 } from '../controllers/dataController';
@@ -46,8 +45,5 @@ router.post('/set_founders', setFounders);
 
 // POST: Trigger inbreeding analysis for all individuals
 router.post('/set_inbreeding/all', setInbreedingForAll);
-
-// POST: Trigger inbreeding analysis for a specific individual by ID
-router.post('/set_inbreeding/:id', setInbreeding);
 
 export default router;

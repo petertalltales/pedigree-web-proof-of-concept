@@ -1,6 +1,3 @@
-// Some consts here that can be turned into settings in the UI
-// Implementing a query-handler would reduce the amount of code in the controller
-
 import pool from '../../config/db';
 import logger from '../../utils/logger';
 

@@ -1,5 +1,3 @@
-// Some validation right now but I was working with a known dataset.
-
 import { Request, Response, NextFunction } from 'express';
 import { processUploadedFile } from '../services/data/uploadService';
 import { MulterRequest } from '../types/expressTypes';
@@ -13,7 +11,7 @@ import { MulterRequest } from '../types/expressTypes';
 export const uploadCsv = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const multerReq = req as MulterRequest;

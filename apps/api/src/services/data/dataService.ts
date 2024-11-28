@@ -1,23 +1,19 @@
-// I started implementing shared types in a lib between frontend and backend, that will save _alot_ of code and standardize the data structures
-
 import pool from '../../config/db';
-import logger from '../../utils/logger';
-import { Individual } from '../../types/Individual';
+import { Individual } from '../../types/pedigreeTypes';
 
 /**
  * Clears the `individuals` table in the database.
- * Rolls back on error and logs the issue.
+ * Rolls back on error.
  * @throws Error if the database operation fails.
  */
 export const clearData = async (): Promise<void> => {
   const client = await pool.connect();
+  await client.query('BEGIN');
   try {
-    await client.query('BEGIN');
     await client.query('DELETE FROM individuals');
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
-    logger.error('Error clearing the `individuals` table:', error);
     throw error;
   } finally {
     client.release();
@@ -30,15 +26,10 @@ export const clearData = async (): Promise<void> => {
  * @throws Error if the database operation fails.
  */
 export const fetchData = async (): Promise<Individual[]> => {
-  try {
-    const result = await pool.query<Individual>(
-      'SELECT * FROM individuals ORDER BY id'
-    );
-    return result.rows;
-  } catch (error) {
-    logger.error('Error fetching data from the `individuals` table:', error);
-    throw error;
-  }
+  const result = await pool.query<Individual>(
+    'SELECT * FROM individuals ORDER BY birth_date DESC'
+  );
+  return result.rows;
 };
 
 /**
@@ -48,13 +39,12 @@ export const fetchData = async (): Promise<Individual[]> => {
  * @throws Error if the database operation fails.
  */
 export const insertData = async (individuals: Individual[]): Promise<void> => {
-  if (individuals.length === 0) return; // No data to insert
+  if (individuals.length === 0) return;
 
   const client = await pool.connect();
+  await client.query('BEGIN');
   try {
-    await client.query('BEGIN');
-
-    const columns = Object.keys(individuals[0]).join(', '); // Column names for the query
+    const columns = Object.keys(individuals[0]).join(', ');
     const values = individuals.map((ind) =>
       Object.values(ind).map((val) =>
         val === ''
@@ -65,12 +55,20 @@ export const insertData = async (individuals: Individual[]): Promise<void> => {
       )
     );
 
-    const valuePlaceholders = values
+    const preparedValues = values.map((indValues) => {
+      const inbreedingIndex = Object.keys(individuals[0]).indexOf('inbreeding');
+      if (inbreedingIndex !== -1 && indValues[inbreedingIndex] === undefined) {
+        indValues[inbreedingIndex] = null;
+      }
+      return indValues;
+    });
+
+    const valuePlaceholders = preparedValues
       .map(
         (_, i) =>
-          `(${Array(values[0].length)
+          `(${Array(preparedValues[0].length)
             .fill(null)
-            .map((_, j) => `$${i * values[0].length + j + 1}`)
+            .map((_, j) => `$${i * preparedValues[0].length + j + 1}`)
             .join(', ')})`
       )
       .join(', ');
@@ -85,14 +83,10 @@ export const insertData = async (individuals: Individual[]): Promise<void> => {
       ON CONFLICT (id) DO UPDATE SET ${updateSet};
     `;
 
-    await client.query(query, values.flat());
+    await client.query(query, preparedValues.flat());
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
-    logger.error(
-      'Error inserting or updating records in the `individuals` table:',
-      error
-    );
     throw error;
   } finally {
     client.release();
@@ -103,27 +97,16 @@ export const insertData = async (individuals: Individual[]): Promise<void> => {
  * Retrieves a single individual by their ID.
  * @param id - The ID of the individual.
  * @returns The Individual object if found, otherwise null.
- * @throws Error if the database operation fails.
  */
 export const getIndividual = async (id: string): Promise<Individual | null> => {
-  try {
-    const query = `
-      SELECT id, father_id, mother_id, birth_date, inbreeding, founder
-      FROM individuals
-      WHERE id = $1;
-    `;
-    const { rows } = await pool.query<Individual>(query, [id]);
+  const query = `
+    SELECT id, father_id, mother_id, birth_date, inbreeding, founder
+    FROM individuals
+    WHERE id = $1;
+  `;
+  const { rows } = await pool.query<Individual>(query, [id]);
 
-    if (rows.length === 0) {
-      logger.info(`Individual with ID ${id} not found.`);
-      return null;
-    }
-
-    return rows[0];
-  } catch (error) {
-    logger.error(`Error retrieving individual with ID ${id}:`, error);
-    throw error;
-  }
+  return rows.length === 0 ? null : rows[0];
 };
 
 /**
@@ -136,18 +119,55 @@ export const updateInbreedingCoefficient = async (
   id: string,
   inbreeding: number
 ): Promise<void> => {
+  const updateQuery = `
+    UPDATE individuals
+    SET inbreeding = $1
+    WHERE id = $2;
+  `;
+  await pool.query(updateQuery, [inbreeding, id]);
+};
+
+/**
+ * Performs a bulk update of inbreeding coefficients for all individuals in a Pedigree map.
+ * @param pedigree - A Pedigree map where each value is an Individual.
+ * @throws Error if the bulk update fails.
+ */
+export const updateInbreedingBulk = async (
+  pedigree: Map<string, Individual>
+): Promise<void> => {
+  const updates = Array.from(pedigree.values())
+    .filter(
+      (individual) =>
+        individual.inbreeding !== null && individual.inbreeding !== undefined
+    )
+    .map((individual) => ({
+      id: individual.id,
+      inbreeding: Number(individual.inbreeding) || 0,
+    }));
+
+  if (updates.length === 0) return;
+
+  const client = await pool.connect();
+  await client.query('BEGIN');
   try {
-    const updateQuery = `
-      UPDATE individuals
-      SET inbreeding = $1
-      WHERE id = $2;
+    const valueStrings = updates
+      .map((_, idx) => `($${idx * 2 + 1}, $${idx * 2 + 2})`)
+      .join(', ');
+    const values = updates.flatMap((u) => [u.id, u.inbreeding]);
+
+    const query = `
+      UPDATE individuals AS i
+      SET inbreeding = data.inbreeding::numeric
+      FROM (VALUES ${valueStrings}) AS data(id, inbreeding)
+      WHERE i.id = data.id;
     `;
-    await pool.query(updateQuery, [inbreeding, id]);
+
+    await client.query(query, values);
+    await client.query('COMMIT');
   } catch (error) {
-    logger.error(
-      `Error updating inbreeding coefficient for individual ID ${id}:`,
-      error
-    );
+    await client.query('ROLLBACK');
     throw error;
+  } finally {
+    client.release();
   }
 };

@@ -1,4 +1,4 @@
-// Serves the compiled frontend as static files, works great.
+// apps/api/src/router.ts
 
 import express from 'express';
 import { fileURLToPath } from 'url';
